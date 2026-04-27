@@ -1,11 +1,9 @@
 import app from "./app.js";
 import env from "./config/env.js";
-import { connectDatabase } from "./config/db.js";
-import { ensureWorkspaceByPhone } from "./services/workspace.service.js";
+import { bootstrapBackend } from "./bootstrap.js";
 
 async function startServer() {
-  await connectDatabase();
-  await ensureWorkspaceByPhone();
+  await bootstrapBackend();
 
   app.listen(env.port, () => {
     console.log(`FinCoach backend running at http://localhost:${env.port}`);
