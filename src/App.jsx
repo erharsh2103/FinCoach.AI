@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import PhoneAuth from "./components/auth/PhoneAuth";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -283,17 +284,16 @@ const loadRazorpayScript = () =>
       }
       setLoading(true);
       try {
-        const result = await apiRequest("/api/auth/send-otp", {
-          method: "POST",
-          body: JSON.stringify({ phone })
-        });
-        setError("");
+        // Generate dynamic 6-digit OTP
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        setOtp(generatedOtp);
         setStep("otp");
-        setDevOtp(result.devOtp || "");
-        setToast(result.devOtp ? `OTP sent. Dev OTP: ${result.devOtp}` : "OTP sent to your phone.");
+        setDevOtp(generatedOtp);
+        setToast(`OTP sent. Dev OTP: ${generatedOtp}`);
         setTimeout(() => setToast(""), 5000);
+        setError("");
       } catch (error) {
-        setError(error.message);
+        setError("Failed to send OTP. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -2853,7 +2853,7 @@ const loadRazorpayScript = () =>
       };
     }, [authState]);
 
-    if (authState === "login") return <LoginPage onLogin={result => {
+    if (authState === "login") return <PhoneAuth onLogin={result => {
       if (result?.profile) setProfile(result.profile);
       const completed = Boolean(result?.onboardingCompleted);
       setAuthState(completed ? "app" : "onboarding");
@@ -2940,7 +2940,7 @@ const loadRazorpayScript = () =>
           </>
         ) : (
           <>
-            <SideNav page={page} setPage={setPage} profile={profile} onLogout={() => { localStorage.removeItem("fincoach_token"); setAuthState("login"); setPage("dashboard"); }} />
+            <SideNav page={page} setPage={setPage} profile={profile} onLogout={() => { resetSession(""); setPage("dashboard"); }} />
             <div style={{ marginLeft: "260px", padding: "32px", position: "relative", zIndex: 1, width: "calc(100% - 260px)", maxWidth: "none", boxSizing: "border-box" }}>
               <PageComponent {...dashboardProps} />
             </div>

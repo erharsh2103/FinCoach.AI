@@ -38,11 +38,29 @@ export const verifyOtpAndLogin = asyncHandler(async (req, res) => {
 
 export const validatePhone = asyncHandler(async (req, res) => {
   const { phone } = req.body;
-  const valid = /^\d{10}$/.test(String(phone || ""));
+  const normalizedPhone = normalizePhone(phone);
+  const valid = /^\d{10}$/.test(normalizedPhone);
 
   if (!valid) {
     throw new HttpError(400, "Phone number must be exactly 10 digits.");
   }
 
-  res.status(200).json({ valid: true });
+  res.status(200).json({ valid: true, phone: normalizedPhone });
+});
+
+export const createPhoneSession = asyncHandler(async (req, res) => {
+  const normalizedPhone = normalizePhone(req.body?.phone);
+
+  if (!/^\d{10}$/.test(normalizedPhone)) {
+    throw new HttpError(400, "Phone number must be exactly 10 digits.");
+  }
+
+  const workspace = await createSessionForPhone(normalizedPhone);
+
+  res.status(200).json({
+    authenticated: true,
+    token: workspace.session.token,
+    profile: workspace.profile,
+    onboardingCompleted: Boolean(workspace.onboardingCompleted)
+  });
 });

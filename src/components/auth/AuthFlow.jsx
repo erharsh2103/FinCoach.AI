@@ -1,5 +1,7 @@
-import React from 'react';
+import PhoneAuth from "./PhoneAuth";
 
-export const AuthFlow = () => {
-  return <div>AuthFlow Component</div>;
-};
+export function AuthFlow({ onLogin }) {
+  return <PhoneAuth onLogin={onLogin} />;
+}
+
+export default AuthFlow;
