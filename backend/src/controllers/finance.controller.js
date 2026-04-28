@@ -231,10 +231,32 @@ export const createTransaction = asyncHandler(async (req, res) => {
 
 export const deleteTransaction = asyncHandler(async (req, res) => {
   const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const transaction = workspace.transactions.find(item => item.id === req.params.id);
+
+  if (!transaction) {
+    throw new HttpError(404, "Transaction not found.");
+  }
+
+  if (transaction.type === "transfer") {
+    const from = workspace.accounts.find(account => account.id === transaction.fromId);
+    const to = workspace.accounts.find(account => account.id === transaction.toId);
+    if (from) from.balance += Number(transaction.amount || 0);
+    if (to) to.balance -= Number(transaction.amount || 0);
+  } else {
+    const account = workspace.accounts.find(item => item.id === transaction.accountId);
+    if (account) {
+      account.balance -= transaction.type === "income" ? Number(transaction.amount || 0) : -Number(transaction.amount || 0);
+    }
+  }
+
   workspace.transactions = workspace.transactions.filter(item => item.id !== req.params.id);
   await workspace.save();
 
-  res.status(200).json({ transactions: workspace.transactions });
+  res.status(200).json({
+    accounts: workspace.accounts,
+    transactions: workspace.transactions,
+    totalBalance: totalBalance(workspace.accounts)
+  });
 });
 
 export const createGoal = asyncHandler(async (req, res) => {

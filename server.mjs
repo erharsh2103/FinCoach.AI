@@ -13,39 +13,27 @@ const seedData = {
   session: null,
   plan: "free",
   profile: {
-    name: "Harsh",
-    phone: "9876543210",
-    email: "harsh@example.com",
-    city: "Mumbai",
-    incomeType: "Salaried",
-    monthlyIncome: 25000,
-    riskProfile: "Balanced"
+    name: "",
+    phone: "",
+    email: "",
+    city: "",
+    incomeType: "",
+    monthlyIncome: 0,
+    riskProfile: "",
+    age: null,
+    occupation: "",
+    permissions: {
+      sms: false,
+      bank: false,
+      notifs: false
+    }
   },
-  accounts: [
-    { id: "acct-1", name: "Savings Account", type: "bank", subtype: "savings", balance: 24500, bankName: "Axis Bank", ifsc: "UTIB0001234" },
-    { id: "acct-2", name: "Cash Wallet", type: "cash", subtype: "", balance: 5200, bankName: "", ifsc: "" }
-  ],
-  transactions: [
-    { id: "txn-1", date: "2026-02-14", type: "income", accountId: "acct-1", amount: 12000, description: "Salary credited" },
-    { id: "txn-2", date: "2026-02-18", type: "expense", accountId: "acct-1", amount: 649, description: "Netflix subscription" },
-    { id: "txn-3", date: "2026-02-19", type: "transfer", fromId: "acct-1", toId: "acct-2", amount: 2000, description: "Wallet top-up" }
-  ],
-  goals: [
-    { id: "goal-1", name: "Emergency Fund", current: 45000, target: 150000, deadline: "2026-12-31", icon: "Shield" },
-    { id: "goal-2", name: "New Laptop", current: 18000, target: 80000, deadline: "2026-09-30", icon: "Laptop" }
-  ],
-  bills: [
-    { id: "bill-1", name: "Electricity Bill", due: "2026-04-30", amount: 1850, status: "upcoming" },
-    { id: "bill-2", name: "Internet", due: "2026-05-03", amount: 999, status: "upcoming" },
-    { id: "bill-3", name: "Credit Card", due: "2026-05-08", amount: 12450, status: "upcoming" }
-  ],
-  subscriptions: [
-    { id: "sub-1", name: "Netflix", category: "Entertainment", amount: 649, cycle: "Monthly", status: "active" },
-    { id: "sub-2", name: "Gym", category: "Health", amount: 800, cycle: "Monthly", status: "active" }
-  ],
-  cashPayments: [
-    { id: "cash-1", date: "2026-04-20", name: "Tea and snacks", category: "Food", amount: 80 }
-  ]
+  accounts: [],
+  transactions: [],
+  goals: [],
+  bills: [],
+  subscriptions: [],
+  cashPayments: []
 };
 
 async function readDb() {
@@ -310,9 +298,22 @@ async function handleRequest(req, res) {
     if (transactionMatch && req.method === "DELETE") {
       const db = await readDb();
       const id = decodeURIComponent(transactionMatch[1]);
+      const transaction = db.transactions.find(item => item.id === id);
+      if (!transaction) return send(res, 404, { error: "Transaction not found." });
+      if (transaction.type === "transfer") {
+        const from = db.accounts.find(account => account.id === transaction.fromId);
+        const to = db.accounts.find(account => account.id === transaction.toId);
+        if (from) from.balance += Number(transaction.amount || 0);
+        if (to) to.balance -= Number(transaction.amount || 0);
+      } else {
+        const account = db.accounts.find(item => item.id === transaction.accountId);
+        if (account) {
+          account.balance -= transaction.type === "income" ? Number(transaction.amount || 0) : -Number(transaction.amount || 0);
+        }
+      }
       db.transactions = db.transactions.filter(item => item.id !== id);
       await writeDb(db);
-      return send(res, 200, { transactions: db.transactions });
+      return send(res, 200, { accounts: db.accounts, transactions: db.transactions, totalBalance: totalBalance(db.accounts) });
     }
 
     if (req.method === "POST" && path === "/api/goals") {

@@ -2,19 +2,38 @@ import { useState, useEffect, useRef } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import PhoneAuth from "./components/auth/PhoneAuth";
+import { Dashboard as DashboardWidget } from "./components/widgets/Dashboard";
+import { Bills as BillsWidget } from "./components/widgets/Bills";
+import { GoalsScreen as GoalsScreenWidget } from "./components/widgets/GoalsScreen";
+import { BudgetPlanner as BudgetPlannerWidget } from "./components/widgets/BudgetPlanner";
+import { EMICalc as EMICalcWidget } from "./components/widgets/EMICalc";
+import { InvestmentAdvisor as InvestmentAdvisorWidget } from "./components/widgets/InvestmentAdvisor";
+import { Copilot as CopilotWidget } from "./components/widgets/Copilot";
+import { FinancialAI as FinancialAIWidget } from "./components/widgets/FinancialAI";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const API_ORIGIN_LABEL = API_BASE_URL || "the local /api proxy";
+
+const buildNetworkError = () =>
+  new Error(`Could not reach ${API_ORIGIN_LABEL}. Start the backend with npm run dev:all or npm --prefix backend run dev.`);
 
 const apiRequest = async (path, options = {}) => {
   const token = localStorage.getItem("fincoach_token");
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { "x-session-token": token } : {}),
-      ...(options.headers || {})
-    },
-    ...options
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "x-session-token": token } : {}),
+        ...(options.headers || {})
+      },
+      ...options
+    });
+  } catch (error) {
+    const networkError = buildNetworkError();
+    networkError.cause = error;
+    throw networkError;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(data.error || "Request failed.");
@@ -22,6 +41,46 @@ const apiRequest = async (path, options = {}) => {
     throw error;
   }
   return data;
+};
+
+const applyTransactionToAccounts = (accounts, transaction) => {
+  const amount = Number(transaction?.amount || 0);
+  if (!amount) return accounts;
+  if (transaction.type === "transfer") {
+    return accounts.map(account => {
+      if (account.id === transaction.fromId) return { ...account, balance: Number(account.balance || 0) - amount };
+      if (account.id === transaction.toId) return { ...account, balance: Number(account.balance || 0) + amount };
+      return account;
+    });
+  }
+  return accounts.map(account =>
+    account.id === transaction.accountId
+      ? {
+          ...account,
+          balance: Number(account.balance || 0) + (transaction.type === "income" ? amount : -amount)
+        }
+      : account
+  );
+};
+
+const revertTransactionFromAccounts = (accounts, transaction) => {
+  const amount = Number(transaction?.amount || 0);
+  if (!amount) return accounts;
+  if (transaction.type === "transfer") {
+    return accounts.map(account => {
+      if (account.id === transaction.fromId) return { ...account, balance: Number(account.balance || 0) + amount };
+      if (account.id === transaction.toId) return { ...account, balance: Number(account.balance || 0) - amount };
+      return account;
+    });
+  }
+  return accounts.map(account =>
+    account.id === transaction.accountId
+      ? {
+          ...account,
+          balance: Number(account.balance || 0) - (transaction.type === "income" ? amount : -amount)
+        }
+      : account
+  );
 };
 
 const loadRazorpayScript = () =>
@@ -204,9 +263,6 @@ const loadRazorpayScript = () =>
       { id: "premiumfeatures", icon: "✨", label: "Premium Features" },
       { id: "upgradeplan", icon: "⬆", label: "Upgrade Plan" },
       { id: "calculator", icon: "🔢", label: "Calculator" },
-      { id: "community", icon: "👥", label: "Community" },
-      { id: "videos", icon: "▶", label: "Videos" },
-      { id: "testimonials", icon: "⭐", label: "Testimonials" },
       { id: "profile", icon: "●", label: "Profile" }
     ];
     return (
@@ -1432,17 +1488,37 @@ const loadRazorpayScript = () =>
     const expenses = transactions.filter(tx => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
     const byCategory = transactions.filter(tx => tx.type === "expense").reduce((acc, tx) => ({ ...acc, [tx.category || "Others"]: (acc[tx.category || "Others"] || 0) + Number(tx.amount || 0) }), {});
     const savingsRate = income ? Math.round(((income - expenses) / income) * 100) : 0;
+    const sourcePill = source => (
+      <span style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "4px 10px",
+        borderRadius: "999px",
+        border: "1px solid rgba(96,165,250,0.28)",
+        background: "rgba(37,99,235,0.14)",
+        color: "#93C5FD",
+        fontSize: "11px",
+        fontWeight: "600"
+      }}>{source}</span>
+    );
 
     return (
       <div style={{ color: "#fff", fontFamily: "system-ui" }}>
         <h1 style={{ margin: "0 0 20px", fontSize: "28px", fontWeight: "800" }}>Analytics</h1>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "14px", marginBottom: "18px" }}>
           {[["Savings Rate", `${savingsRate}%`, "#60A5FA"], ["Accounts", accounts.length, "#34D399"], ["Expense Categories", Object.keys(byCategory).length, "#FBBF24"]].map(([label, value, color]) => (
-            <GlassCard key={label} style={{ padding: "18px" }}><p style={{ margin: "0 0 6px", color: "rgba(255,255,255,0.55)" }}>{label}</p><strong style={{ fontSize: "25px", color }}>{value}</strong></GlassCard>
+            <GlassCard key={label} style={{ padding: "18px" }}>
+              <div style={{ marginBottom: "10px" }}>{sourcePill(label === "Accounts" ? "Accounts" : "Transactions")}</div>
+              <p style={{ margin: "0 0 6px", color: "rgba(255,255,255,0.55)" }}>{label}</p>
+              <strong style={{ fontSize: "25px", color }}>{value}</strong>
+            </GlassCard>
           ))}
         </div>
         <GlassCard style={{ padding: "20px" }}>
-          <h2 style={{ margin: "0 0 16px", fontSize: "19px" }}>Category Breakdown</h2>
+          <div style={{ marginBottom: "16px" }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: "19px" }}>Category Breakdown</h2>
+            {sourcePill("Transactions")}
+          </div>
           {Object.entries(byCategory).length ? Object.entries(byCategory).map(([category, amount]) => {
             const pct = expenses ? Math.round((amount / expenses) * 100) : 0;
             return (
@@ -1537,9 +1613,9 @@ const loadRazorpayScript = () =>
   }
 
   function NetWorthPage({ accounts }) {
-    const assets = accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0) + 185000;
-    const liabilities = 42000;
-    return <FeatureHubPage title="Net Worth" subtitle="Track assets, liabilities, and your overall financial position."><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>{[["Assets", assets, "#34D399"], ["Liabilities", liabilities, "#F87171"], ["Net Worth", assets - liabilities, "#60A5FA"]].map(([l, v, c]) => <GlassCard key={l} style={{ padding: "20px" }}><p style={{ color: "rgba(255,255,255,0.55)", margin: "0 0 8px" }}>{l}</p><strong style={{ color: c, fontSize: "28px" }}>{formatCurrency(v)}</strong></GlassCard>)}</div></FeatureHubPage>;
+    const assets = accounts.reduce((sum, account) => sum + Math.max(0, Number(account.balance || 0)), 0);
+    const liabilities = accounts.reduce((sum, account) => sum + Math.max(0, -Number(account.balance || 0)), 0);
+    return <FeatureHubPage title="Net Worth" subtitle="Track assets, liabilities, and your overall financial position."><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>{[["Assets", assets, "#34D399"], ["Liabilities", liabilities, "#F87171"], ["Net Worth", assets - liabilities, "#60A5FA"]].map(([l, v, c]) => <GlassCard key={l} style={{ padding: "20px" }}><p style={{ color: "rgba(255,255,255,0.55)", margin: "0 0 8px" }}>{l}</p><strong style={{ color: c, fontSize: "28px" }}>{formatCurrency(v)}</strong></GlassCard>)}</div>{!accounts.length && <p style={{ color: "rgba(255,255,255,0.55)", marginTop: "16px" }}>Add accounts to calculate your net worth.</p>}</FeatureHubPage>;
   }
 
   function BudgetPlannerPage({ profile }) {
@@ -1575,11 +1651,7 @@ const loadRazorpayScript = () =>
   }
 
   function SimpleFeaturePages({ type, subscriptions, plan, onChangePlan, paymentLoadingPlan }) {
-    if (type === "subscriptions") return <FeatureHubPage title="Subscriptions" subtitle="Detect and manage recurring payments."><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "14px" }}>{subscriptions.map(sub => <GlassCard key={sub.id} style={{ padding: "18px" }}><strong>{sub.name}</strong><p style={{ color: "rgba(255,255,255,0.55)" }}>{sub.category} - {sub.cycle}</p><strong>{formatCurrency(sub.amount)}</strong></GlassCard>)}</div></FeatureHubPage>;
-    if (type === "investadvisor") return <FeatureHubPage title="Investment Advisor" subtitle="Suggested allocation based on a balanced risk profile."><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>{[["Equity SIP", "55%"], ["Debt/FD", "25%"], ["Gold", "10%"], ["Emergency Cash", "10%"]].map(([a, b]) => <GlassCard key={a} style={{ padding: "18px" }}><p style={{ margin: "0 0 6px" }}>{a}</p><strong style={{ fontSize: "26px", color: "#60A5FA" }}>{b}</strong></GlassCard>)}</div></FeatureHubPage>;
-    if (type === "aicopilot") return <FeatureHubPage title="AI Copilot" subtitle="Personalised finance prompts for budgeting, saving, tax, and investing."><GlassCard style={{ padding: "22px" }}><p style={{ color: "rgba(255,255,255,0.72)", lineHeight: 1.7 }}>Ask the AI Coach page for conversational guidance. Pro and Elite plans unlock unlimited usage, deeper tax guidance, and investment scenarios.</p></GlassCard></FeatureHubPage>;
-    if (type === "financialai") return <FeatureHubPage title="Financial AI" subtitle="Advanced planning for tax optimisation, risk, and portfolio strategy."><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>{["80C and HRA tax planner", "10-year wealth projection", "Portfolio rebalancing", "Risk assessment"].map(item => <GlassCard key={item} style={{ padding: "18px" }}><strong>{item}</strong><p style={{ color: "rgba(255,255,255,0.55)" }}>Elite-ready module</p></GlassCard>)}</div></FeatureHubPage>;
-    if (type === "premium") return <FeatureHubPage title="Premium Features" subtitle="Unlock advanced AI, reports, advisor tools, and unlimited usage."><GlassCard style={{ padding: "22px" }}><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>{["Unlimited AI Copilot", "Advanced Analytics", "Tax Optimisation", "Portfolio Rebalancing", "Custom PDF Reports", "Priority Support"].map(item => <div key={item} style={{ padding: "14px", background: "rgba(255,255,255,0.06)", borderRadius: "12px" }}>{item}</div>)}</div></GlassCard></FeatureHubPage>;
+    if (type === "subscriptions") return <FeatureHubPage title="Subscriptions" subtitle="Detect and manage recurring payments.">{subscriptions.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "14px" }}>{subscriptions.map(sub => <GlassCard key={sub.id} style={{ padding: "18px" }}><strong>{sub.name}</strong><p style={{ color: "rgba(255,255,255,0.55)" }}>{sub.category} - {sub.cycle}</p><strong>{formatCurrency(sub.amount)}</strong></GlassCard>)}</div> : <GlassCard style={{ padding: "20px" }}><p style={{ margin: 0, color: "rgba(255,255,255,0.55)" }}>No recurring subscriptions have been detected yet.</p></GlassCard>}</FeatureHubPage>;
     return <FeatureHubPage title="Upgrade Plan" subtitle="Choose the plan that fits your financial journey."><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "14px" }}>{[["free", "Free", 0], ["pro", "Pro", 299], ["elite", "Elite", 599]].map(([key, name, price]) => {
       const isCurrent = plan === key;
       const isLoading = paymentLoadingPlan === key;
@@ -1592,8 +1664,7 @@ const loadRazorpayScript = () =>
       ["transactions", "Transactions"], ["analytics", "Analytics"], ["bills", "Bills"], ["networth", "Net Worth"],
       ["budgetplanner", "Budget Planner"], ["emicalculator", "EMI Calculator"], ["investadvisor", "Investment Advisor"],
       ["subscriptions", "Subscriptions"], ["cashpayments", "Cash Payments"], ["smartinsights", "Smart Insights"],
-      ["aicopilot", "AI Copilot"], ["financialai", "Financial AI"], ["premiumfeatures", "Premium Features"], ["upgradeplan", "Upgrade Plan"], ["calculator", "Investment Calculator"],
-      ["community", "Community"], ["videos", "Videos"], ["testimonials", "Testimonials"]
+      ["aicopilot", "AI Copilot"], ["financialai", "Financial AI"], ["upgradeplan", "Upgrade Plan"], ["calculator", "Investment Calculator"]
     ];
     return (
       <FeatureHubPage title="More" subtitle="All FinCoach tools and feature modules.">
@@ -1890,20 +1961,51 @@ const loadRazorpayScript = () =>
   }
 
   // ─── AI COACH ─────────────────────────────────────────────────────────────
-  function AICoach() {
-    const [messages, setMessages] = useState([
-      { role: "ai", text: "Hello! I'm your FinCoach AI. Based on your spending this month, you've used 76% of your budget. Would you like some tips to save more?" },
-    ]);
+  function AICoach({ profile, accounts, transactions, billsData, goalsData }) {
+    const totalBalance = accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const activeTransactions = transactions.filter(tx => String(tx.date || "").startsWith(currentMonth));
+    const monthlyIncome = Number(profile?.monthlyIncome || 0) || activeTransactions.filter(tx => tx.type === "income").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const monthlyExpenses = activeTransactions.filter(tx => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const budgetUsed = monthlyIncome ? Math.round((monthlyExpenses / monthlyIncome) * 100) : 0;
+    const unpaidBills = billsData.filter(bill => bill.status !== "paid");
+    const topGoal = [...goalsData].sort((a, b) => Number(b.current || 0) / Math.max(1, Number(b.target || 1)) - Number(a.current || 0) / Math.max(1, Number(a.target || 1)))[0];
+    const starter = monthlyIncome
+      ? `Hello! Your current budget usage is ${budgetUsed}% with ${formatCurrency(Math.max(0, monthlyIncome - monthlyExpenses))} left this month.`
+      : "Hello! Add profile income, accounts, and transactions, and I will coach from your real data.";
+    const [messages, setMessages] = useState([{ role: "ai", text: starter }]);
     const [input, setInput] = useState("");
     const [typing, setTyping] = useState(false);
-
-    const aiResponses = [
-      "Great question! Try the 50/30/20 rule: 50% needs, 30% wants, 20% savings.",
-      "Based on your spending, you could save ₹3,000 by cutting non-essential subscriptions.",
-      "I recommend investing ₹2,000/month in a SIP. Over 10 years at 12%, that's ₹4.6 lakhs!",
-      "Your Netflix, Gym, and Internet bills total ₹2,048. Consider bundling services to save.",
-      "Your savings rate is 8%. Aim for 20% — try automating transfers on payday!"
-    ];
+    const buildCoachReply = question => {
+      const text = String(question || "").toLowerCase();
+      if (!transactions.length && !accounts.length) {
+        return "There is no finance data yet. Add accounts and transactions first, then I can give budget and savings guidance from live numbers.";
+      }
+      if (text.includes("budget") || text.includes("spend")) {
+        if (!monthlyIncome) return `You have logged ${formatCurrency(monthlyExpenses)} in expenses, but no monthly income yet. Save your income in Profile to unlock a full budget view.`;
+        return `This month you spent ${formatCurrency(monthlyExpenses)} out of ${formatCurrency(monthlyIncome)}, so budget usage is ${budgetUsed}% and the remaining budget is ${formatCurrency(Math.max(0, monthlyIncome - monthlyExpenses))}.`;
+      }
+      if (text.includes("save") || text.includes("saving")) {
+        const savingsRate = monthlyIncome ? Math.max(0, Math.round(((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100)) : 0;
+        return `Your current savings rate is ${savingsRate}%. Total balance across accounts is ${formatCurrency(totalBalance)}. A simple next step is to move a fixed amount right after income lands.`;
+      }
+      if (text.includes("invest")) {
+        const risk = profile?.riskProfile || "Balanced";
+        const investable = Math.max(0, monthlyIncome - monthlyExpenses);
+        return `Your profile risk setting is ${risk}. Based on this month, the investable surplus is about ${formatCurrency(investable)}. Keep emergency cash separate before increasing long-term investing.`;
+      }
+      if (text.includes("goal")) {
+        return topGoal
+          ? `${topGoal.name} is your leading goal at ${Math.round((Number(topGoal.current || 0) / Math.max(1, Number(topGoal.target || 1))) * 100)}% progress. A steady monthly top-up will move it faster.`
+          : "You do not have any goals yet. Add a goal and I can help pace monthly contributions.";
+      }
+      if (text.includes("bill")) {
+        return unpaidBills.length
+          ? `You have ${unpaidBills.length} unpaid bill${unpaidBills.length === 1 ? "" : "s"}. The next one is ${unpaidBills[0].name} due on ${unpaidBills[0].due}.`
+          : "You do not have any unpaid bills right now.";
+      }
+      return `Right now I see ${transactions.length} transactions, ${accounts.length} accounts, ${goalsData.length} goals, and ${unpaidBills.length} unpaid bills. Ask about budget, savings, goals, bills, or investing and I will answer from that data.`;
+    };
 
     const send = () => {
       if (!input.trim()) return;
@@ -1913,7 +2015,7 @@ const loadRazorpayScript = () =>
       setTyping(true);
       setTimeout(() => {
         setTyping(false);
-        setMessages(m => [...m, { role: "ai", text: aiResponses[Math.floor(Math.random() * aiResponses.length)] }]);
+        setMessages(m => [...m, { role: "ai", text: buildCoachReply(userMsg) }]);
       }, 1500);
     };
 
@@ -1922,8 +2024,8 @@ const loadRazorpayScript = () =>
         <h1 style={{ margin: "0 0 20px", fontSize: "26px", fontWeight: "800" }}>🧠 AI Financial Coach</h1>
         <GlassCard style={{ padding: "20px", marginBottom: "16px" }}>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            {["💡 Save Tips", "📊 Budget Check", "📈 Investment Advice", "🎯 Goal Plan"].map(t => (
-              <button key={t} onClick={() => setInput(t.replace(/[💡📊📈🎯] /,""))} style={{
+            {["Save tips", "Budget check", "Investment advice", "Goal plan", "Bill reminders"].map(t => (
+              <button key={t} onClick={() => setInput(t)} style={{
                 background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)",
                 color: "#60A5FA", padding: "8px 14px", borderRadius: "20px", cursor: "pointer", fontSize: "13px"
               }}>{t}</button>
@@ -2443,21 +2545,14 @@ const loadRazorpayScript = () =>
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [profile, setProfile] = useState(defaultProfile);
     const [plan, setPlan] = useState("free");
-    const [accounts, setAccounts] = useState([
-      { id: "acct-1", name: "Savings Account", type: "bank", subtype: "savings", balance: 24500, bankName: "Axis Bank", ifsc: "UTIB0001234" },
-      { id: "acct-2", name: "Cash Wallet", type: "cash", balance: 5200 }
-    ]);
-    const [transactions, setTransactions] = useState([
-      { id: "txn-1", date: "2026-02-14", type: "income", accountId: "acct-1", amount: 12000, description: "Salary credited" },
-      { id: "txn-2", date: "2026-02-18", type: "expense", accountId: "acct-1", amount: 649, description: "Netflix subscription" },
-      { id: "txn-3", date: "2026-02-19", type: "transfer", fromId: "acct-1", toId: "acct-2", amount: 2000, description: "Wallet top-up" }
-    ]);
+    const [accounts, setAccounts] = useState([]);
+    const [transactions, setTransactions] = useState([]);
     const [goalsData, setGoalsData] = useState([]);
     const [billsData, setBillsData] = useState([]);
     const [subscriptions, setSubscriptions] = useState([]);
     const [cashPayments, setCashPayments] = useState([]);
     const [accountModal, setAccountModal] = useState({ open: false, account: null });
-    const [transferState, setTransferState] = useState({ fromId: "acct-1", toId: "acct-2", amount: "", error: "", success: "" });
+    const [transferState, setTransferState] = useState({ fromId: "", toId: "", amount: "", error: "", success: "" });
     const [pdfFilter, setPdfFilter] = useState({ startDate: "", endDate: "", accountId: "all" });
     const [statusMessage, setStatusMessage] = useState("");
     const [paymentLoadingPlan, setPaymentLoadingPlan] = useState("");
@@ -2582,17 +2677,21 @@ const loadRazorpayScript = () =>
       } catch (error) {
         const local = { ...transaction, id: `txn-${Date.now()}`, amount, category: transaction.category || "Others" };
         setTransactions(items => [local, ...items]);
-        setAccounts(items => items.map(account => account.id === transaction.accountId ? { ...account, balance: account.balance + (transaction.type === "income" ? amount : -amount) } : account));
+        setAccounts(items => applyTransactionToAccounts(items, local));
         setStatusMessage(`Backend unavailable, transaction saved locally only. ${error.message}`);
       }
     };
 
     const handleDeleteTransaction = async id => {
+      const transactionToDelete = transactions.find(item => item.id === id);
       try {
         const result = await apiRequest(`/api/transactions/${encodeURIComponent(id)}`, { method: "DELETE" });
-        setTransactions(result.transactions);
+        if (result.accounts) setAccounts(result.accounts);
+        else if (transactionToDelete) setAccounts(items => revertTransactionFromAccounts(items, transactionToDelete));
+        setTransactions(Array.isArray(result.transactions) ? result.transactions : transactions.filter(item => item.id !== id));
         setStatusMessage("");
       } catch (error) {
+        if (transactionToDelete) setAccounts(items => revertTransactionFromAccounts(items, transactionToDelete));
         setTransactions(items => items.filter(item => item.id !== id));
         setStatusMessage(`Backend unavailable, transaction deleted locally only. ${error.message}`);
       }
@@ -2901,32 +3000,28 @@ const loadRazorpayScript = () =>
     };
 
     const pageMap = {
-      dashboard: DashboardLive,
+      dashboard: DashboardWidget,
       accounts: AccountsPage,
       transactions: TransactionsPage,
       analytics: AnalyticsPage,
-      ai: AICoach,
-      goals: props => <GoalsManagerPage goals={props.goalsData} onAddGoal={props.onAddGoal} onFundGoal={props.onFundGoal} onDeleteGoal={props.onDeleteGoal} />,
-      bills: props => <BillsPage bills={props.billsData} onAddBill={props.onAddBill} onPayBill={props.onPayBill} onDeleteBill={props.onDeleteBill} />,
+      ai: props => <AICoach profile={props.profile} accounts={props.accounts} transactions={props.transactions} billsData={props.billsData} goalsData={props.goalsData} />,
+      goals: props => <GoalsScreenWidget goals={props.goalsData} onAddGoal={props.onAddGoal} onFundGoal={props.onFundGoal} onDeleteGoal={props.onDeleteGoal} />,
+      bills: props => <BillsWidget bills={props.billsData} onAddBill={props.onAddBill} onPayBill={props.onPayBill} onDeleteBill={props.onDeleteBill} />,
       networth: NetWorthPage,
-      budgetplanner: BudgetPlannerPage,
-      emicalculator: EMICalculatorPage,
-      investadvisor: props => <SimpleFeaturePages type="investadvisor" {...props} />,
+      budgetplanner: props => <BudgetPlannerWidget profile={props.profile} transactions={props.transactions} />,
+      emicalculator: EMICalcWidget,
+      investadvisor: props => <InvestmentAdvisorWidget profile={props.profile} accounts={props.accounts} transactions={props.transactions} />,
       subscriptions: props => <SimpleFeaturePages type="subscriptions" {...props} />,
       cashpayments: CashPaymentsPage,
       smartinsights: props => <SmartInsightsPage transactions={props.transactions} bills={props.billsData} goals={props.goalsData} />,
-      aicopilot: props => <SimpleFeaturePages type="aicopilot" {...props} />,
-      financialai: props => <SimpleFeaturePages type="financialai" {...props} />,
-      premiumfeatures: props => <SimpleFeaturePages type="premium" {...props} />,
+      aicopilot: props => <CopilotWidget profile={props.profile} transactions={props.transactions} goalsData={props.goalsData} billsData={props.billsData} />,
+      financialai: props => <FinancialAIWidget profile={props.profile} accounts={props.accounts} transactions={props.transactions} goalsData={props.goalsData} billsData={props.billsData} />,
       upgradeplan: props => <SimpleFeaturePages type="upgrade" {...props} />,
       calculator: Calculator,
-      community: Community,
-      videos: Videos,
-      testimonials: Testimonials,
       more: MorePage,
       profile: ProfilePage
     };
-    const PageComponent = pageMap[page] || Dashboard;
+    const PageComponent = pageMap[page] || DashboardWidget;
 
     return (
       <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #060B1E 0%, #0D1B3E 50%, #071520 100%)", fontFamily: "system-ui" }}>
