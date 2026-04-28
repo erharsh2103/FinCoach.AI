@@ -1,20 +1,56 @@
 import { initializeApp } from "firebase/app";
+import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB80pWHIbf8RX5P1TSmgwpso5QN5uK7BCY",
-  authDomain: "fincoach-ai-boolean.firebaseapp.com",
-  projectId: "fincoach-ai-boolean",
-  storageBucket: "fincoach-ai-boolean.firebasestorage.app",
-  messagingSenderId: "1042652718028",
-  appId: "1:1042652718028:web:c0ba21544509c649907369",
-  measurementId: "G-RYVEW5K7ZW"
+const envConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
+const fallbackConfig = {
+  apiKey: "AIzaSyBYh_8ntS795-cB5ETcCBH1zG5zANsPJgc",
+  authDomain: "finfin-5d976.firebaseapp.com",
+  projectId: "finfin-5d976",
+  storageBucket: "finfin-5d976.firebasestorage.app",
+  messagingSenderId: "942604383268",
+  appId: "1:942604383268:web:01d0510ff95531430614b1",
+  measurementId: "G-76LB3FEGYT"
+};
 
-const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
+const hasEnvConfig = [
+  envConfig.apiKey,
+  envConfig.authDomain,
+  envConfig.projectId,
+  envConfig.appId
+].every(Boolean);
 
-export const auth = app ? getAuth(app) : null;
+const firebaseConfig = hasEnvConfig ? envConfig : fallbackConfig;
 
-export { firebaseConfig };
+export const isFirebaseConfigured = [
+  firebaseConfig.apiKey,
+  firebaseConfig.authDomain,
+  firebaseConfig.projectId,
+  firebaseConfig.appId
+].every(Boolean);
+
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+
+export let analytics = null;
+
+if (typeof window !== "undefined") {
+  isSupported()
+    .then(supported => {
+      if (supported) {
+        analytics = getAnalytics(app);
+      }
+    })
+    .catch(() => {
+      analytics = null;
+    });
+}

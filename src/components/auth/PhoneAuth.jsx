@@ -3,6 +3,9 @@ import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "../../firebase";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const isPhoneAuthTestMode = import.meta.env.VITE_FIREBASE_PHONE_AUTH_TEST_MODE === "true";
+const isDevBypassEnabled =
+  import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS !== "false";
 
 const formatFirebasePhone = phone => {
   const digits = String(phone || "").replace(/\D/g, "");
@@ -10,6 +13,35 @@ const formatFirebasePhone = phone => {
     throw new Error("Please enter a valid 10-digit phone number.");
   }
   return `+91${digits}`;
+};
+
+const getFirebaseErrorMessage = error => {
+  const code = error?.code || "";
+
+  switch (code) {
+    case "auth/invalid-phone-number":
+      return "That phone number format is invalid. Enter a 10-digit mobile number.";
+    case "auth/missing-phone-number":
+      return "Enter your phone number before requesting an OTP.";
+    case "auth/captcha-check-failed":
+      return "reCAPTCHA verification failed. Complete it again and retry.";
+    case "auth/quota-exceeded":
+      return "SMS quota is exhausted for this Firebase project. Try again later or use a test number in Firebase Console.";
+    case "auth/too-many-requests":
+      return "Too many OTP attempts were made for this number or device. Wait a while and try again.";
+    case "auth/operation-not-allowed":
+      return "Phone sign-in is not enabled in Firebase Console for this project.";
+    case "auth/app-not-authorized":
+      return "This domain is not authorized in Firebase Authentication. Add your current dev domain in Firebase Console.";
+    case "auth/invalid-app-credential":
+      return "Firebase rejected the app verification request. Reopen the page and try again.";
+    case "auth/network-request-failed":
+      return "reCAPTCHA could not reach Firebase or Google services. Check your internet, disable ad blockers/VPN, and allow google.com/gstatic.com.";
+    case "auth/billing-not-enabled":
+      return "Firebase billing is not enabled for phone authentication. Attach a billing account for live SMS, or use Firebase test phone numbers in dev mode.";
+    default:
+      return error?.message || "Unable to send OTP right now.";
+  }
 };
 
 const apiRequest = async (path, options = {}) => {
@@ -29,6 +61,25 @@ const apiRequest = async (path, options = {}) => {
   return data;
 };
 
+const createLocalBypassResult = phone => {
+  const normalizedPhone = String(phone || "").replace(/\D/g, "").slice(0, 10) || "9999999999";
+
+  return {
+    authenticated: true,
+    token: `dev-bypass-${Date.now()}`,
+    onboardingCompleted: true,
+    profile: {
+      name: "Dev User",
+      phone: normalizedPhone,
+      email: "",
+      city: "",
+      income: "",
+      savingsGoal: "",
+      onboardingCompleted: true
+    }
+  };
+};
+
 export default function PhoneAuth({ onLogin }) {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -37,6 +88,8 @@ export default function PhoneAuth({ onLogin }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
+  const [recaptchaLoading, setRecaptchaLoading] = useState(false);
   const confirmationResultRef = useRef(null);
   const recaptchaRef = useRef(null);
   const recaptchaContainerId = "fincoach-phone-recaptcha";
@@ -47,31 +100,88 @@ export default function PhoneAuth({ onLogin }) {
     return () => window.clearTimeout(timer);
   }, [countdown]);
 
-  useEffect(() => {
-    return () => {
-      if (recaptchaRef.current) {
-        recaptchaRef.current.clear();
-        recaptchaRef.current = null;
-      }
-    };
-  }, []);
-
   const ensureRecaptcha = () => {
     if (!auth || !isFirebaseConfigured) {
       throw new Error("Firebase phone auth is not configured. Add your VITE_FIREBASE_* values to Fin-w/.env.");
     }
 
+    if (isPhoneAuthTestMode) {
+      auth.settings.appVerificationDisabledForTesting = true;
+    }
+
     if (!recaptchaRef.current) {
       recaptchaRef.current = new RecaptchaVerifier(auth, recaptchaContainerId, {
-        size: "normal",
+        size: isPhoneAuthTestMode ? "invisible" : "normal",
         callback: () => {
           setError("");
+          setMessage("reCAPTCHA verified. You can send the OTP now.");
+        },
+        "expired-callback": () => {
+          setRecaptchaReady(false);
+          setMessage("");
+          setError("reCAPTCHA expired. Complete it again before requesting OTP.");
         }
       });
     }
 
     return recaptchaRef.current;
   };
+
+  const resetRecaptcha = () => {
+    if (recaptchaRef.current) {
+      recaptchaRef.current.clear();
+      recaptchaRef.current = null;
+    }
+    setRecaptchaReady(false);
+  };
+
+  const renderRecaptcha = async () => {
+    setRecaptchaLoading(true);
+    setError("");
+
+    try {
+      const verifier = ensureRecaptcha();
+      await verifier.render();
+      setRecaptchaReady(true);
+    } catch (renderError) {
+      console.error("reCAPTCHA render failed:", renderError);
+      resetRecaptcha();
+      setError(getFirebaseErrorMessage(renderError));
+    } finally {
+      setRecaptchaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (step !== "phone" || !isFirebaseConfigured) {
+      return undefined;
+    }
+
+    let active = true;
+    setRecaptchaLoading(true);
+
+    ensureRecaptcha()
+      .render()
+      .then(() => {
+        if (active) {
+          setRecaptchaReady(true);
+          setRecaptchaLoading(false);
+        }
+      })
+      .catch(renderError => {
+        console.error("reCAPTCHA render failed:", renderError);
+        if (active) {
+          resetRecaptcha();
+          setError(getFirebaseErrorMessage(renderError));
+          setRecaptchaLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+      resetRecaptcha();
+    };
+  }, [step]);
 
   const createAppSession = async verifiedPhone => {
     const normalizedPhone = String(verifiedPhone || "").replace(/\D/g, "").slice(-10);
@@ -91,17 +201,19 @@ export default function PhoneAuth({ onLogin }) {
 
     try {
       const appVerifier = ensureRecaptcha();
+      await appVerifier.render();
       const firebasePhone = formatFirebasePhone(phone);
       confirmationResultRef.current = await signInWithPhoneNumber(auth, firebasePhone, appVerifier);
       setStep("otp");
       setCountdown(30);
       setMessage(`OTP sent to ${firebasePhone}.`);
     } catch (sendError) {
+      console.error("Phone OTP send failed:", sendError);
       if (recaptchaRef.current) {
         recaptchaRef.current.clear();
         recaptchaRef.current = null;
       }
-      setError(sendError.message || "Unable to send OTP right now.");
+      setError(getFirebaseErrorMessage(sendError));
     } finally {
       setLoading(false);
     }
@@ -127,7 +239,8 @@ export default function PhoneAuth({ onLogin }) {
       const credential = await confirmationResultRef.current.confirm(otp.trim());
       await createAppSession(credential.user.phoneNumber);
     } catch (verifyError) {
-      setError(verifyError.message || "OTP verification failed.");
+      console.error("Phone OTP verify failed:", verifyError);
+      setError(getFirebaseErrorMessage(verifyError) || "OTP verification failed.");
     } finally {
       setLoading(false);
     }
@@ -138,6 +251,37 @@ export default function PhoneAuth({ onLogin }) {
     setOtp("");
     setError("");
     setMessage("");
+    confirmationResultRef.current = null;
+  };
+
+  const handleResendOtp = () => {
+    setStep("phone");
+    setOtp("");
+    setError("");
+    setMessage("Enter your number again to request a fresh OTP.");
+    confirmationResultRef.current = null;
+  };
+
+  const handleDevBypass = async () => {
+    setLoading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const fallbackPhone = phone.length === 10 ? phone : "9999999999";
+      try {
+        await createAppSession(fallbackPhone);
+      } catch (sessionError) {
+        const localResult = createLocalBypassResult(fallbackPhone);
+        localStorage.setItem("fincoach_token", localResult.token);
+        onLogin(localResult);
+        setMessage("Opened dashboard in local dev bypass mode.");
+      }
+    } catch (bypassError) {
+      setError(bypassError.message || "Unable to open the app in dev bypass mode.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputStyle = {
@@ -243,9 +387,43 @@ export default function PhoneAuth({ onLogin }) {
               />
             </div>
             <div id={recaptchaContainerId} style={{ marginBottom: "16px" }} />
-            <button type="submit" disabled={loading || phone.length !== 10} style={buttonStyle}>
+            {error && !recaptchaReady ? (
+              <button
+                type="button"
+                onClick={renderRecaptcha}
+                disabled={recaptchaLoading || loading}
+                style={{
+                  ...buttonStyle,
+                  marginBottom: "12px",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.12)"
+                }}
+              >
+                {recaptchaLoading ? "Loading reCAPTCHA..." : "Retry reCAPTCHA"}
+              </button>
+            ) : null}
+            <button
+              type="submit"
+              disabled={loading || recaptchaLoading || phone.length !== 10 || !recaptchaReady}
+              style={buttonStyle}
+            >
               {loading ? "Sending OTP..." : "Send OTP"}
             </button>
+            {isDevBypassEnabled ? (
+              <button
+                type="button"
+                onClick={handleDevBypass}
+                disabled={loading}
+                style={{
+                  ...buttonStyle,
+                  marginTop: "12px",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.12)"
+                }}
+              >
+                {loading ? "Opening Dashboard..." : "Enter Dashboard"}
+              </button>
+            ) : null}
           </form>
         ) : (
           <form onSubmit={handleVerifyOtp}>
@@ -275,7 +453,7 @@ export default function PhoneAuth({ onLogin }) {
               <button
                 type="button"
                 disabled={countdown > 0 || loading}
-                onClick={handleChangeNumber}
+                onClick={handleResendOtp}
                 style={{
                   background: "none",
                   border: "none",
@@ -296,6 +474,20 @@ export default function PhoneAuth({ onLogin }) {
         {!isFirebaseConfigured ? (
           <p style={{ color: "#FDE68A", fontSize: "13px", margin: "16px 0 0" }}>
             Missing Firebase config. Set the `VITE_FIREBASE_*` variables in `Fin-w/.env`.
+          </p>
+        ) : isPhoneAuthTestMode ? (
+          <p style={{ color: "#FDE68A", fontSize: "13px", margin: "16px 0 0" }}>
+            Firebase phone auth test mode is enabled. Use a test phone number configured in Firebase Console. No real SMS will be sent.
+          </p>
+        ) : isDevBypassEnabled ? (
+          <p style={{ color: "#FDE68A", fontSize: "13px", margin: "16px 0 0" }}>
+            Dev auth bypass is enabled on this local build. Use Enter Dashboard to skip OTP.
+          </p>
+        ) : step === "phone" && !recaptchaReady ? (
+          <p style={{ color: "#FDE68A", fontSize: "13px", margin: "16px 0 0" }}>
+            {recaptchaLoading
+              ? "Waiting for reCAPTCHA to load. Complete it before requesting OTP."
+              : "reCAPTCHA is unavailable right now. Retry it after checking your connection or browser extensions."}
           </p>
         ) : null}
       </div>
