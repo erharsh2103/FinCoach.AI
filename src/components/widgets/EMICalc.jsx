@@ -24,7 +24,7 @@ export const EMICalc = () => {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px", marginTop: "18px" }}>
           {breakdown.map(([label, value]) => (
             <div key={label}>
-              <p style={{ color: "rgba(255,255,255,0.55)", margin: "0 0 6px" }}>{label}</p>
+              <p style={{ color: "var(--muted)", margin: "0 0 6px" }}>{label}</p>
               <strong style={{ fontSize: "24px" }}>{formatCurrency(value)}</strong>
             </div>
           ))}

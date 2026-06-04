@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { resolveWorkspace, serializeWorkspace, totalBalance } from "../services/workspace.service.js";
+import { serializeWorkspace, totalBalance } from "../services/workspace.service.js";
 import { HttpError } from "../utils/httpError.js";
 
 function normalizeAccount(payload, id) {
@@ -167,12 +167,11 @@ export const getHealth = asyncHandler(async (_req, res) => {
 });
 
 export const getFinance = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req);
-  res.status(200).json(serializeWorkspace(workspace));
+  res.status(200).json(serializeWorkspace(req.workspace));
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const profile = normalizeProfile(req.body);
 
   workspace.profile = profile;
@@ -189,7 +188,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
 });
 
 export const updatePlan = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const { plan } = req.body;
 
   if (!["free", "pro", "elite"].includes(plan)) {
@@ -203,7 +202,7 @@ export const updatePlan = asyncHandler(async (req, res) => {
 });
 
 export const createTransaction = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const transaction = normalizeTransaction(req.body, `txn-${Date.now()}`);
   const account = workspace.accounts.find(item => item.id === transaction.accountId);
 
@@ -230,7 +229,7 @@ export const createTransaction = asyncHandler(async (req, res) => {
 });
 
 export const deleteTransaction = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const transaction = workspace.transactions.find(item => item.id === req.params.id);
 
   if (!transaction) {
@@ -260,7 +259,7 @@ export const deleteTransaction = asyncHandler(async (req, res) => {
 });
 
 export const createGoal = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const goal = normalizeGoal(req.body, `goal-${Date.now()}`);
   workspace.goals.push(goal);
   await workspace.save();
@@ -269,7 +268,7 @@ export const createGoal = asyncHandler(async (req, res) => {
 });
 
 export const fundGoal = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const fundAmount = Number(req.body.amount);
 
   if (!Number.isFinite(fundAmount) || fundAmount <= 0) {
@@ -290,7 +289,7 @@ export const fundGoal = asyncHandler(async (req, res) => {
 });
 
 export const deleteGoal = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   workspace.goals = workspace.goals.filter(item => item.id !== req.params.id);
   await workspace.save();
 
@@ -298,7 +297,7 @@ export const deleteGoal = asyncHandler(async (req, res) => {
 });
 
 export const createBill = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const bill = normalizeBill(req.body, `bill-${Date.now()}`);
   workspace.bills.push(bill);
   await workspace.save();
@@ -307,7 +306,7 @@ export const createBill = asyncHandler(async (req, res) => {
 });
 
 export const payBill = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   workspace.bills = workspace.bills.map(bill =>
     bill.id === req.params.id ? { ...bill.toObject(), status: "paid" } : bill
   );
@@ -317,7 +316,7 @@ export const payBill = asyncHandler(async (req, res) => {
 });
 
 export const deleteBill = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   workspace.bills = workspace.bills.filter(item => item.id !== req.params.id);
   await workspace.save();
 
@@ -325,7 +324,7 @@ export const deleteBill = asyncHandler(async (req, res) => {
 });
 
 export const createCashPayment = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const payment = normalizeCashPayment(req.body, `cash-${Date.now()}`);
   const cashAccount = workspace.accounts.find(account => account.type === "cash");
 
@@ -357,7 +356,7 @@ export const createCashPayment = asyncHandler(async (req, res) => {
 });
 
 export const createAccount = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const account = normalizeAccount(req.body, `acct-${Date.now()}`);
   workspace.accounts.push(account);
   await workspace.save();
@@ -369,7 +368,7 @@ export const createAccount = asyncHandler(async (req, res) => {
 });
 
 export const updateAccount = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const index = workspace.accounts.findIndex(account => account.id === req.params.id);
 
   if (index === -1) {
@@ -386,7 +385,7 @@ export const updateAccount = asyncHandler(async (req, res) => {
 });
 
 export const deleteAccount = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const exists = workspace.accounts.some(account => account.id === req.params.id);
 
   if (!exists) {
@@ -410,7 +409,7 @@ export const deleteAccount = asyncHandler(async (req, res) => {
 });
 
 export const createTransfer = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const amount = Number(req.body.amount);
   const from = workspace.accounts.find(account => account.id === req.body.fromId);
   const to = workspace.accounts.find(account => account.id === req.body.toId);

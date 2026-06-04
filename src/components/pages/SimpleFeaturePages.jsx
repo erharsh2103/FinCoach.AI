@@ -1,0 +1,10 @@
+import { GlassCard, FeatureHubPage, formatCurrency } from "../widgets/widgetShared";
+
+export function SimpleFeaturePages({ type, subscriptions, plan, onChangePlan, paymentLoadingPlan }) {
+  if (type === "subscriptions") return <FeatureHubPage title="Subscriptions" subtitle="Detect and manage recurring payments.">{subscriptions.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "14px" }}>{subscriptions.map(sub => <GlassCard key={sub.id} style={{ padding: "18px" }}><strong>{sub.name}</strong><p style={{ color: "var(--muted)" }}>{sub.category} - {sub.cycle}</p><strong>{formatCurrency(sub.amount)}</strong></GlassCard>)}</div> : <GlassCard style={{ padding: "20px" }}><p style={{ margin: 0, color: "var(--muted)" }}>No recurring subscriptions have been detected yet.</p></GlassCard>}</FeatureHubPage>;
+  return <FeatureHubPage title="Upgrade Plan" subtitle="Choose the plan that fits your financial journey."><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "14px" }}>{[["free", "Free", 0], ["pro", "Pro", 299], ["elite", "Elite", 599]].map(([key, name, price]) => {
+    const isCurrent = plan === key;
+    const isLoading = paymentLoadingPlan === key;
+    return <GlassCard key={key} style={{ padding: "22px", border: isCurrent ? "1px solid var(--primary)" : undefined }}><h2 style={{ margin: "0 0 8px" }}>{name}</h2><strong style={{ fontSize: "28px" }}>{price ? formatCurrency(price) + "/mo" : "Free"}</strong><button disabled={isCurrent || isLoading} onClick={() => onChangePlan(key)} style={{ marginTop: "16px", width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: isCurrent ? "var(--surface-soft)" : "linear-gradient(135deg,var(--primary),var(--accent))", color: isCurrent ? "var(--text)" : "#fff", fontWeight: 800, cursor: isCurrent || isLoading ? "not-allowed" : "pointer", opacity: isLoading ? 0.8 : 1 }}>{isCurrent ? "Current Plan" : isLoading ? "Opening checkout..." : key === "free" ? "Choose Plan" : "Pay with Razorpay"}</button></GlassCard>;
+  })}</div></FeatureHubPage>;
+}

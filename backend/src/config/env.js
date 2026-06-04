@@ -4,8 +4,15 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Load backend/.env first (it wins for any shared keys), then fall back to the
+// repo-root .env for keys not already set. dotenv does not override existing
+// values, so the first file loaded takes precedence.
 dotenv.config({
-  path: resolve(__dirname, "../../.env")
+  path: resolve(__dirname, "../../.env") // backend/.env
+});
+
+dotenv.config({
+  path: resolve(__dirname, "../../../.env") // repo-root .env
 });
 
 const env = {
@@ -16,11 +23,16 @@ const env = {
   smsProvider: process.env.SMS_PROVIDER || "",
   razorpayKeyId: process.env.RAZORPAY_KEY_ID || "",
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || "",
-  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || ""
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || "",
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
+  anthropicModel: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5"
 };
 
 if (env.nodeEnv === "production" && !process.env.MONGODB_URI) {
   throw new Error("Missing required environment variable: MONGODB_URI");
 }
+
+console.log(`📦 Environment: ${env.nodeEnv}`);
+console.log(`🔗 MongoDB: ${env.mongoUri.split("@")[1] || "local"}`);
 
 export default env;

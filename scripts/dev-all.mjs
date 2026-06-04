@@ -53,7 +53,7 @@ function startProcess(label, args, cwd) {
 
 const processes = [
   startProcess("frontend", ["run", "dev"], rootDir),
-  startProcess("backend", ["--prefix", "backend", "run", "start"], rootDir)
+  startProcess("backend", ["--prefix", "backend", "run", "dev"], rootDir)
 ];
 
 let shuttingDown = false;

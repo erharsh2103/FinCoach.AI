@@ -12,7 +12,7 @@ export const GoalsScreen = ({ goals = [], onAddGoal, onFundGoal, onDeleteGoal })
   };
 
   return (
-    <div style={{ color: "#fff", fontFamily: "system-ui" }}>
+    <div style={{ color: "var(--text)", fontFamily: "system-ui" }}>
       <h1 style={{ margin: "0 0 20px", fontSize: "28px", fontWeight: "800" }}>Goals</h1>
       <GlassCard style={{ padding: "20px", marginBottom: "18px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "12px" }}>
@@ -21,7 +21,7 @@ export const GoalsScreen = ({ goals = [], onAddGoal, onFundGoal, onDeleteGoal })
           <input value={form.current} onChange={e => setForm({ ...form, current: e.target.value.replace(/[^\d.]/g, "") })} placeholder="Saved so far" style={inputStyle} />
           <input type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} style={inputStyle} />
         </div>
-        <button onClick={submit} style={{ marginTop: "14px", padding: "13px 18px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg,#2563EB,#059669)", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
+        <button onClick={submit} style={{ marginTop: "14px", padding: "13px 18px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg,var(--primary),var(--accent))", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
           Add Goal
         </button>
       </GlassCard>
@@ -34,18 +34,18 @@ export const GoalsScreen = ({ goals = [], onAddGoal, onFundGoal, onDeleteGoal })
                 <strong>{goal.name}</strong>
                 <span>{pct}%</span>
               </div>
-              <div style={{ height: "9px", background: "rgba(255,255,255,0.1)", borderRadius: "999px", marginBottom: "10px" }}>
-                <div style={{ width: `${pct}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg,#2563EB,#059669)" }} />
+              <div style={{ height: "9px", background: "rgba(15,23,42,0.07)", borderRadius: "999px", marginBottom: "10px" }}>
+                <div style={{ width: `${pct}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg,var(--primary),var(--accent))" }} />
               </div>
-              <p style={{ color: "rgba(255,255,255,0.6)", margin: "0 0 12px" }}>
+              <p style={{ color: "var(--muted)", margin: "0 0 12px" }}>
                 {formatCurrency(goal.current)} of {formatCurrency(goal.target)} {goal.deadline ? `by ${goal.deadline}` : ""}
               </p>
               <div style={{ display: "flex", gap: "8px" }}>
                 <input value={fund[goal.id] || ""} onChange={e => setFund({ ...fund, [goal.id]: e.target.value.replace(/[^\d.]/g, "") })} placeholder="Add funds" style={{ ...inputStyle, padding: "10px" }} />
-                <button onClick={() => onFundGoal?.(goal.id, fund[goal.id])} style={{ padding: "10px 12px", borderRadius: "10px", border: "none", background: "#2563EB", color: "#fff", cursor: "pointer" }}>
+                <button onClick={() => onFundGoal?.(goal.id, fund[goal.id])} style={{ padding: "10px 12px", borderRadius: "10px", border: "none", background: "var(--primary)", color: "#fff", cursor: "pointer" }}>
                   Fund
                 </button>
-                <button onClick={() => onDeleteGoal?.(goal.id)} style={{ padding: "10px 12px", borderRadius: "10px", border: "none", background: "rgba(239,68,68,0.16)", color: "#F87171", cursor: "pointer" }}>
+                <button onClick={() => onDeleteGoal?.(goal.id)} style={{ padding: "10px 12px", borderRadius: "10px", border: "none", background: "rgba(239,68,68,0.16)", color: "#EF4444", cursor: "pointer" }}>
                   Delete
                 </button>
               </div>
@@ -56,3 +56,5 @@ export const GoalsScreen = ({ goals = [], onAddGoal, onFundGoal, onDeleteGoal })
     </div>
   );
 };
+
+

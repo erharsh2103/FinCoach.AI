@@ -4,27 +4,29 @@ export const formatCurrency = value => `Rs. ${Number(value || 0).toLocaleString(
 
 export const inputStyle = {
   width: "100%",
-  background: "rgba(255,255,255,0.08)",
-  border: "1px solid rgba(255,255,255,0.15)",
+  background: "var(--surface-alt)",
+  border: "1px solid var(--border)",
   borderRadius: "12px",
   padding: "14px 16px",
-  color: "#fff",
+  color: "var(--text)",
   fontSize: "15px",
   outline: "none",
   boxSizing: "border-box",
   fontFamily: "system-ui"
 };
 
-export function GlassCard({ children, style = {}, onClick }) {
+export function GlassCard({ children, style = {}, onClick, className }) {
   return (
     <div
       onClick={onClick}
+      className={className}
       style={{
-        background: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(12px)",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "var(--glass-bg)",
+        border: "1px solid var(--glass-border)",
         borderRadius: "20px",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+        boxShadow: "0 8px 30px rgba(20,50,40,0.10), inset 0 1px 0 rgba(255,255,255,0.5)",
+        backdropFilter: "blur(var(--glass-blur))",
+        WebkitBackdropFilter: "blur(var(--glass-blur))",
         ...style
       }}
     >
@@ -35,9 +37,9 @@ export function GlassCard({ children, style = {}, onClick }) {
 
 export function FeatureHubPage({ title, subtitle, children }) {
   return (
-    <div style={{ color: "#fff", fontFamily: "system-ui" }}>
+    <div style={{ color: "var(--text)", fontFamily: "system-ui" }}>
       <h1 style={{ margin: "0 0 8px", fontSize: "28px", fontWeight: "800" }}>{title}</h1>
-      <p style={{ margin: "0 0 20px", color: "rgba(255,255,255,0.55)" }}>{subtitle}</p>
+      <p style={{ margin: "0 0 20px", color: "var(--muted)" }}>{subtitle}</p>
       {children}
     </div>
   );
@@ -51,9 +53,9 @@ export function DataSourceBadge({ source }) {
         alignItems: "center",
         padding: "4px 10px",
         borderRadius: "999px",
-        border: "1px solid rgba(96,165,250,0.28)",
-        background: "rgba(37,99,235,0.14)",
-        color: "#93C5FD",
+        border: "1px solid rgba(15,185,129,0.25)",
+        background: "rgba(15,185,129,0.10)",
+        color: "var(--primary)",
         fontSize: "11px",
         fontWeight: "600",
         letterSpacing: "0.02em"
@@ -71,7 +73,7 @@ export function RingProgress({ percent, size = 100, stroke = 10 }) {
 
   return (
     <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth={stroke} />
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -86,8 +88,8 @@ export function RingProgress({ percent, size = 100, stroke = 10 }) {
       />
       <defs>
         <linearGradient id="widget-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#2563EB" />
-          <stop offset="100%" stopColor="#059669" />
+          <stop offset="0%" stopColor="var(--primary)" />
+          <stop offset="100%" stopColor="var(--primary-soft)" />
         </linearGradient>
       </defs>
     </svg>
@@ -99,7 +101,7 @@ export function DonutChart({ essentials, nonEssentials }) {
   if (!total) {
     return (
       <svg width="120" height="120" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="60" cy="60" r="45" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="18" />
+        <circle cx="60" cy="60" r="45" fill="none" stroke="rgba(15,23,42,0.06)" strokeWidth="18" />
       </svg>
     );
   }
@@ -111,13 +113,13 @@ export function DonutChart({ essentials, nonEssentials }) {
 
   return (
     <svg width="120" height="120" style={{ transform: "rotate(-90deg)" }}>
-      <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="18" />
+      <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(15,23,42,0.06)" strokeWidth="18" />
       <circle
         cx="60"
         cy="60"
         r={radius}
         fill="none"
-        stroke="#2563EB"
+        stroke="var(--primary)"
         strokeWidth="18"
         strokeDasharray={`${essentialsDash} ${circumference - essentialsDash}`}
         strokeLinecap="round"
@@ -127,7 +129,7 @@ export function DonutChart({ essentials, nonEssentials }) {
         cy="60"
         r={radius}
         fill="none"
-        stroke="#059669"
+        stroke="var(--accent)"
         strokeWidth="18"
         strokeDasharray={`${nonEssentialsDash} ${circumference - nonEssentialsDash}`}
         strokeDashoffset={-essentialsDash}
@@ -150,15 +152,11 @@ export const getRiskProfileMeta = profile => {
   const risk = String(profile?.riskProfile || "").toLowerCase();
   if (risk.includes("aggressive")) return { equity: 70, debt: 15, gold: 10, cash: 5, accent: "#F97316" };
   if (risk.includes("conservative")) return { equity: 35, debt: 40, gold: 15, cash: 10, accent: "#60A5FA" };
-  return { equity: 55, debt: 25, gold: 10, cash: 10, accent: "#34D399" };
+  return { equity: 55, debt: 25, gold: 10, cash: 10, accent: "var(--success)" };
 };
 
 export const getFinanceSnapshot = ({ profile, accounts = [], transactions = [], billsData = [], goalsData = [] }) => {
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const transactionMonths = [...new Set(transactions.map(tx => String(tx.date || "").slice(0, 7)).filter(Boolean))].sort();
-  const activeMonth = transactionMonths.includes(currentMonth)
-    ? currentMonth
-    : transactionMonths[transactionMonths.length - 1] || currentMonth;
+  const activeMonth = new Date().toISOString().slice(0, 7); // always live current month
   const activeTransactions = transactions.filter(tx => String(tx.date || "").startsWith(activeMonth));
   const income = activeTransactions
     .filter(tx => tx.type === "income")

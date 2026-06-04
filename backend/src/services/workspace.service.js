@@ -8,7 +8,11 @@ export function totalBalance(accounts = []) {
 }
 
 export async function ensureWorkspaceByPhone(phone = defaultProfile.phone) {
-  const normalizedPhone = String(phone || "").replace(/\D/g, "").slice(0, 10) || defaultProfile.phone;
+  const normalizedPhone = String(phone || "").replace(/\D/g, "").slice(0, 10);
+  if (!/^[0-9]{10}$/.test(normalizedPhone)) {
+    return null;
+  }
+
   let workspace = await Workspace.findOne({ phone: normalizedPhone });
 
   if (!workspace) {
@@ -30,7 +34,7 @@ export async function resolveWorkspace(req, { requireAuth = false } = {}) {
     throw new HttpError(401, "Please log in to continue.");
   }
 
-  return ensureWorkspaceByPhone();
+  return null;
 }
 
 export async function createSessionForPhone(phone) {

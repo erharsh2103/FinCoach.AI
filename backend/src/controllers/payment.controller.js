@@ -2,13 +2,12 @@ import crypto from "node:crypto";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { PLAN_PRICING } from "../constants/plans.js";
 import { getRazorpayClient } from "../config/razorpay.js";
-import { resolveWorkspace } from "../services/workspace.service.js";
 import { Payment } from "../models/payment.model.js";
 import { HttpError } from "../utils/httpError.js";
 import env from "../config/env.js";
 
 export const createPaymentOrder = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const { plan } = req.body;
   const selectedPlan = PLAN_PRICING[plan];
 
@@ -50,7 +49,7 @@ export const createPaymentOrder = asyncHandler(async (req, res) => {
 });
 
 export const verifyPayment = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const {
     plan,
     razorpay_order_id: razorpayOrderId,
@@ -107,7 +106,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 });
 
 export const getPaymentHistory = asyncHandler(async (req, res) => {
-  const workspace = await resolveWorkspace(req, { requireAuth: true });
+  const workspace = req.workspace;
   const payments = await Payment.find({ workspaceId: workspace._id })
     .sort({ createdAt: -1 })
     .lean();

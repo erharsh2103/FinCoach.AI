@@ -7,7 +7,9 @@
   "scripts": {
     "server": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "db:check": "node scripts/db-check.mjs",
+    "razorpay:check": "node scripts/razorpay-check.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

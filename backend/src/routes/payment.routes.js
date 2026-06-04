@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAuth } from "../middleware/auth.js";
 import {
   createPaymentOrder,
   getPaymentHistory,
@@ -7,8 +8,8 @@ import {
 
 const router = Router();
 
-router.get("/history", getPaymentHistory);
-router.post("/create-order", createPaymentOrder);
-router.post("/verify", verifyPayment);
+router.get("/history", requireAuth, getPaymentHistory);
+router.post("/create-order", requireAuth, createPaymentOrder);
+router.post("/verify", requireAuth, verifyPayment);
 
 export default router;

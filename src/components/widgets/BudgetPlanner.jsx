@@ -17,7 +17,7 @@ export const BudgetPlanner = ({ profile, transactions = [] }) => {
     <FeatureHubPage title="Budget Planner" subtitle="Use the 50/30/20 rule to plan spending from your live monthly income.">
       <GlassCard style={{ padding: "22px" }}>
         {!income ? (
-          <p style={{ margin: 0, color: "rgba(255,255,255,0.55)" }}>Add your monthly income in Profile or log an income transaction to generate a plan.</p>
+          <p style={{ margin: 0, color: "var(--muted)" }}>Add your monthly income in Profile or log an income transaction to generate a plan.</p>
         ) : (
           <>
         {rows.map(([label, pct, hint]) => (
@@ -26,9 +26,9 @@ export const BudgetPlanner = ({ profile, transactions = [] }) => {
               <span>{label}</span>
               <strong>{formatCurrency(income * pct)}</strong>
             </div>
-            <p style={{ margin: "0 0 8px", color: "rgba(255,255,255,0.45)", fontSize: "12px" }}>{hint}</p>
-            <div style={{ height: "9px", background: "rgba(255,255,255,0.1)", borderRadius: "999px" }}>
-              <div style={{ width: `${pct * 100}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg,#2563EB,#059669)" }} />
+            <p style={{ margin: "0 0 8px", color: "var(--muted)", fontSize: "12px" }}>{hint}</p>
+            <div style={{ height: "9px", background: "rgba(15,23,42,0.07)", borderRadius: "999px" }}>
+              <div style={{ width: `${pct * 100}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg,var(--primary),var(--accent))" }} />
             </div>
           </div>
         ))}
@@ -38,3 +38,5 @@ export const BudgetPlanner = ({ profile, transactions = [] }) => {
     </FeatureHubPage>
   );
 };
+
+

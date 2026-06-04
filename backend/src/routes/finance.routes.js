@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import {
   createAccount,
   createBill,
@@ -21,22 +22,22 @@ import {
 
 const router = Router();
 
-router.get("/health", getHealth);
-router.get("/finance", getFinance);
-router.put("/profile", updateProfile);
-router.put("/plan", updatePlan);
-router.post("/transactions", createTransaction);
-router.delete("/transactions/:id", deleteTransaction);
-router.post("/goals", createGoal);
-router.put("/goals/:id/fund", fundGoal);
-router.delete("/goals/:id", deleteGoal);
-router.post("/bills", createBill);
-router.put("/bills/:id/pay", payBill);
-router.delete("/bills/:id", deleteBill);
-router.post("/cash-payments", createCashPayment);
-router.post("/accounts", createAccount);
-router.put("/accounts/:id", updateAccount);
-router.delete("/accounts/:id", deleteAccount);
-router.post("/transfers", createTransfer);
+router.get("/health", optionalAuth, getHealth);
+router.get("/finance", requireAuth, getFinance);
+router.put("/profile", requireAuth, updateProfile);
+router.put("/plan", requireAuth, updatePlan);
+router.post("/transactions", requireAuth, createTransaction);
+router.delete("/transactions/:id", requireAuth, deleteTransaction);
+router.post("/goals", requireAuth, createGoal);
+router.put("/goals/:id/fund", requireAuth, fundGoal);
+router.delete("/goals/:id", requireAuth, deleteGoal);
+router.post("/bills", requireAuth, createBill);
+router.put("/bills/:id/pay", requireAuth, payBill);
+router.delete("/bills/:id", requireAuth, deleteBill);
+router.post("/cash-payments", requireAuth, createCashPayment);
+router.post("/accounts", requireAuth, createAccount);
+router.put("/accounts/:id", requireAuth, updateAccount);
+router.delete("/accounts/:id", requireAuth, deleteAccount);
+router.post("/transfers", requireAuth, createTransfer);
 
 export default router;

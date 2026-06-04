@@ -64,3 +64,25 @@ export const createPhoneSession = asyncHandler(async (req, res) => {
     onboardingCompleted: Boolean(workspace.onboardingCompleted)
   });
 });
+
+export const devLogin = asyncHandler(async (req, res) => {
+  if (env.nodeEnv !== "development") {
+    throw new HttpError(403, "Dev login only available in development mode.");
+  }
+
+  const { phone } = req.body;
+  const normalizedPhone = normalizePhone(phone);
+
+  if (!/^\d{10}$/.test(normalizedPhone)) {
+    throw new HttpError(400, "Phone number must be exactly 10 digits.");
+  }
+
+  const workspace = await createSessionForPhone(normalizedPhone);
+
+  res.status(200).json({
+    authenticated: true,
+    token: workspace.session.token,
+    profile: workspace.profile,
+    onboardingCompleted: Boolean(workspace.onboardingCompleted)
+  });
+});

@@ -1,0 +1,42 @@
+/* FinCoach UI — CSS variables only. No !important overrides on HTML elements.
+   Components use inline styles; this file only defines the design tokens.
+   Palette: periwinkle + warm yellow on a soft light-gray canvas. */
+:root {
+  --bg: #ECF1EF;
+  --surface: #FFFFFF;
+  --surface-alt: #F0F4F2;
+  --surface-soft: #E1E8E4;
+  --text: #16201B;
+  --muted: rgba(82,96,90,0.78);
+  --primary: #0FB981;       /* emerald — text, links, accents */
+  --primary-soft: #34D39E;  /* mint — card fills / gradients */
+  --accent: #334155;        /* slate — secondary accent */
+  --success: #0FB981;
+  --danger: #F2545B;
+  --border: rgba(20,40,32,0.08);
+  --card-shadow: 0 10px 30px rgba(20,50,40,0.08);
+  --ink: #0F1B17;           /* deep green-black for premium card / bottom nav */
+  --midnight: #0FB981;
+  --dusty: #34D39E;
+  /* glassmorphism */
+  --glass-bg: rgba(255,255,255,0.55);
+  --glass-border: rgba(255,255,255,0.65);
+  --glass-blur: 18px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Small helper classes (opt-in only, no broad element overrides) */
+.muted { color: var(--muted); }
+.accent { color: var(--accent); }
+a, .link { color: var(--primary); text-decoration: none; }
+pre, code, kbd { background: rgba(20,24,40,0.04); color: var(--text); }
+
+@media (max-width: 640px) {
+  #root { padding: 0; }
+}

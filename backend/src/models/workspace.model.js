@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const profileSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
+    name: { type: String, default: "", trim: true },
     phone: { type: String, required: true, trim: true },
     age: { type: Number, default: null },
     email: { type: String, trim: true, default: "" },
