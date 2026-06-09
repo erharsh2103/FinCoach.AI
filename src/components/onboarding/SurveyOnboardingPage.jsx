@@ -1,6 +1,42 @@
 import { useState } from "react";
 import { FloatingBg } from "../layout/FloatingBg";
-import { GlassCard, inputStyle } from "../widgets/widgetShared";
+import { GlassCard } from "../widgets/widgetShared";
+
+// Tokens with literal fallbacks so this first screen always renders correctly,
+// even if the theme CSS is slow/cached.
+const T = {
+  primary: "var(--primary, #0FB981)",
+  primarySoft: "var(--primary-soft, #34D39E)",
+  text: "var(--text, #16201B)",
+  muted: "var(--muted, #5f6b64)",
+  surfaceAlt: "var(--surface-alt, #eef2f0)",
+  border: "var(--border, #cdd6d1)",
+  danger: "var(--danger, #F2545B)"
+};
+
+const fieldInput = {
+  width: "100%",
+  boxSizing: "border-box",
+  marginTop: "6px",
+  background: "#ffffff",
+  border: `1.5px solid ${T.border}`,
+  borderRadius: "12px",
+  padding: "13px 14px",
+  fontSize: "15px",
+  color: T.text,
+  outline: "none",
+  fontFamily: "system-ui"
+};
+const labelStyle = { display: "block", fontSize: "13px", fontWeight: 600, color: T.text };
+
+function Field({ label, children }) {
+  return (
+    <label style={{ display: "block", marginBottom: "14px" }}>
+      <span style={labelStyle}>{label}</span>
+      {children}
+    </label>
+  );
+}
 
 export function SurveyOnboardingPage({ initialProfile, onDone }) {
   const [step, setStep] = useState(1);
@@ -76,109 +112,108 @@ export function SurveyOnboardingPage({ initialProfile, onDone }) {
     }
   };
 
+  const chip = (selected) => ({
+    padding: "12px",
+    borderRadius: "12px",
+    border: selected ? `1.5px solid ${T.primary}` : `1.5px solid ${T.border}`,
+    cursor: "pointer",
+    background: selected ? T.primary : "#ffffff",
+    color: selected ? "#fff" : T.text,
+    fontSize: "13px",
+    fontWeight: 600,
+    fontFamily: "system-ui"
+  });
+
   return (
     <div style={{
       minHeight: "100vh",
-      background: "var(--bg)",
+      background: "var(--bg, #ECF1EF)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "flex-start",
       fontFamily: "system-ui",
-      paddingTop: "40px",
-      paddingBottom: "40px"
+      padding: "40px 16px"
     }}>
       <FloatingBg />
       <div style={{ width: "min(640px, 92vw)", zIndex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", color: "var(--muted)", fontSize: "14px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", color: T.muted, fontSize: "14px" }}>
           <span>Step {step} of {surveySteps.length}</span>
           <span>{Math.round(progress)}% complete</span>
         </div>
-        <div style={{ height: "4px", background: "rgba(15,23,42,0.08)", borderRadius: "4px", marginBottom: "30px" }}>
-          <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, var(--primary), var(--accent))", borderRadius: "4px", transition: "width 0.5s ease" }} />
+        <div style={{ height: "6px", background: "rgba(20,40,32,0.10)", borderRadius: "4px", marginBottom: "28px" }}>
+          <div style={{ height: "100%", width: `${progress}%`, background: `linear-gradient(90deg, ${T.primary}, ${T.primarySoft})`, borderRadius: "4px", transition: "width 0.5s ease" }} />
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", gap: "20px", marginBottom: "40px", flexWrap: "wrap" }}>
-          {["👤", "₹", "💼", "📋"].map((icon, index) => (
-            <div key={icon} style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "50%",
-              background: index + 1 <= step ? "linear-gradient(135deg, var(--primary), var(--accent))" : "rgba(15,23,42,0.07)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-              border: index + 1 === step ? "2px solid var(--primary)" : "none"
-            }}>{icon}</div>
-          ))}
+        <div style={{ display: "flex", justifyContent: "center", gap: "16px", marginBottom: "32px", flexWrap: "wrap" }}>
+          {["👤", "₹", "💼", "📋"].map((icon, index) => {
+            const active = index + 1 <= step;
+            return (
+              <div key={icon} style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                background: active ? `linear-gradient(135deg, ${T.primary}, ${T.primarySoft})` : "#e7ecea",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "20px",
+                color: "#fff",
+                border: index + 1 === step ? `2px solid ${T.primary}` : "2px solid transparent"
+              }}>{icon}</div>
+            );
+          })}
         </div>
 
-        <GlassCard style={{ padding: "36px", animation: "fadeUp 0.4s ease" }}>
-          <h2 style={{ color: "var(--text)", fontSize: "24px", fontWeight: "700", margin: "0 0 8px" }}>
+        <GlassCard style={{ padding: "32px", animation: "fadeUp 0.4s ease" }}>
+          <h2 style={{ color: T.text, fontSize: "23px", fontWeight: "800", margin: "0 0 6px" }}>
             {surveySteps[step - 1].icon} {surveySteps[step - 1].title}
           </h2>
-          <p style={{ color: "var(--muted)", margin: "0 0 28px", fontSize: "14px" }}>{surveySteps[step - 1].sub}</p>
+          <p style={{ color: T.muted, margin: "0 0 24px", fontSize: "14px" }}>{surveySteps[step - 1].sub}</p>
 
           {step === 1 && (
             <>
-              <input placeholder="Full Name" value={data.name} onChange={e => setData(current => ({ ...current, name: e.target.value }))} style={inputStyle} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px" }}>
-                <input placeholder="Age" type="number" value={data.age} onChange={e => setData(current => ({ ...current, age: e.target.value.replace(/\D/g, "").slice(0, 3) }))} style={inputStyle} />
-                <input placeholder="City" value={data.city} onChange={e => setData(current => ({ ...current, city: e.target.value }))} style={inputStyle} />
+              <Field label="Full name">
+                <input placeholder="e.g. Harsh Aggarwal" value={data.name} onChange={e => setData(c => ({ ...c, name: e.target.value }))} style={fieldInput} />
+              </Field>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <Field label="Age">
+                  <input placeholder="e.g. 21" type="number" value={data.age} onChange={e => setData(c => ({ ...c, age: e.target.value.replace(/\D/g, "").slice(0, 3) }))} style={fieldInput} />
+                </Field>
+                <Field label="City">
+                  <input placeholder="e.g. New Delhi" value={data.city} onChange={e => setData(c => ({ ...c, city: e.target.value }))} style={fieldInput} />
+                </Field>
               </div>
             </>
           )}
 
           {step === 2 && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px", marginBottom: "12px" }}>
+              <span style={labelStyle}>Income type</span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "10px", margin: "8px 0 18px" }}>
                 {["Salaried", "Self-Employed", "Business", "Student"].map(item => (
-                  <button key={item} onClick={() => setData(current => ({ ...current, incomeType: item }))} style={{
-                    padding: "12px",
-                    borderRadius: "12px",
-                    border: "none",
-                    cursor: "pointer",
-                    background: data.incomeType === item ? "var(--primary)" : "var(--surface-alt)",
-                    color: data.incomeType === item ? "#fff" : "var(--text)",
-                    fontSize: "13px",
-                    fontWeight: "600"
-                  }}>{item}</button>
+                  <button key={item} onClick={() => setData(c => ({ ...c, incomeType: item }))} style={chip(data.incomeType === item)}>{item}</button>
                 ))}
               </div>
-              <input placeholder="Monthly Income (Rs.)" type="number" value={data.income} onChange={e => setData(current => ({ ...current, income: e.target.value.replace(/[^\d.]/g, "") }))} style={inputStyle} />
+              <Field label="Monthly income (₹)">
+                <input placeholder="e.g. 50000" type="number" value={data.income} onChange={e => setData(c => ({ ...c, income: e.target.value.replace(/[^\d.]/g, "") }))} style={fieldInput} />
+              </Field>
             </>
           )}
 
           {step === 3 && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <span style={labelStyle}>Occupation</span>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", margin: "8px 0 18px" }}>
                 {["Student", "Government", "Private", "Freelancer", "Entrepreneur", "Homemaker"].map(item => (
-                  <button key={item} onClick={() => setData(current => ({ ...current, occupation: item }))} style={{
-                    padding: "14px",
-                    borderRadius: "12px",
-                    border: "none",
-                    cursor: "pointer",
-                    background: data.occupation === item ? "var(--primary)" : "var(--surface-alt)",
-                    color: data.occupation === item ? "#fff" : "var(--text)",
-                    fontSize: "14px"
-                  }}>{item}</button>
+                  <button key={item} onClick={() => setData(c => ({ ...c, occupation: item }))} style={chip(data.occupation === item)}>{item}</button>
                 ))}
               </div>
-              <div style={{ marginTop: "18px" }}>
-                <div style={{ color: "var(--muted)", fontSize: "13px", marginBottom: "10px" }}>Risk Profile</div>
-                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  {["Conservative", "Balanced", "Growth"].map(item => (
-                    <button key={item} onClick={() => setData(current => ({ ...current, riskProfile: item }))} style={{
-                      padding: "11px 14px",
-                      borderRadius: "12px",
-                      border: data.riskProfile === item ? "1px solid var(--primary)" : "1px solid var(--border)",
-                      background: data.riskProfile === item ? "rgba(15,118,110,0.10)" : "var(--surface-alt)",
-                      color: data.riskProfile === item ? "var(--primary)" : "var(--text)",
-                      cursor: "pointer"
-                    }}>{item}</button>
-                  ))}
-                </div>
+              <span style={labelStyle}>Risk profile</span>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "8px" }}>
+                {["Conservative", "Balanced", "Growth"].map(item => (
+                  <button key={item} onClick={() => setData(c => ({ ...c, riskProfile: item }))} style={chip(data.riskProfile === item)}>{item}</button>
+                ))}
               </div>
             </>
           )}
@@ -190,40 +225,58 @@ export function SurveyOnboardingPage({ initialProfile, onDone }) {
                 { icon: "🏦", title: "Bank Statement Analysis", desc: "Use patterns to improve coaching and spending insights.", key: "bank" },
                 { icon: "🔔", title: "Smart Notifications", desc: "Send reminders for bills, goals, and payment activity.", key: "notifs" }
               ].map(item => (
-                <GlassCard key={item.key} style={{ padding: "18px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "14px" }}>
+                <div key={item.key} style={{ padding: "16px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "14px", background: "#fff", border: `1.5px solid ${T.border}`, borderRadius: "14px" }}>
                   <span style={{ fontSize: "24px" }}>{item.icon}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ color: "var(--text)", fontWeight: "600", marginBottom: "4px" }}>{item.title}</div>
-                    <div style={{ color: "var(--muted)", fontSize: "13px" }}>{item.desc}</div>
+                    <div style={{ color: T.text, fontWeight: "600", marginBottom: "4px" }}>{item.title}</div>
+                    <div style={{ color: T.muted, fontSize: "13px" }}>{item.desc}</div>
                   </div>
-                  <button onClick={() => setPermissions(current => ({ ...current, [item.key]: !current[item.key] }))} style={{
-                    width: "30px",
-                    height: "30px",
+                  <button onClick={() => setPermissions(c => ({ ...c, [item.key]: !c[item.key] }))} style={{
+                    width: "32px",
+                    height: "32px",
                     borderRadius: "50%",
-                    border: "2px solid var(--border)",
-                    background: permissions[item.key] ? "var(--primary)" : "transparent",
+                    border: `2px solid ${permissions[item.key] ? T.primary : T.border}`,
+                    background: permissions[item.key] ? T.primary : "#fff",
                     color: "#fff",
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    fontWeight: 800
                   }}>{permissions[item.key] ? "✓" : ""}</button>
-                </GlassCard>
+                </div>
               ))}
             </>
           )}
 
-          {error && <p style={{ color: "var(--danger)", fontSize: "13px", margin: "16px 0 0" }}>{error}</p>}
-          <button onClick={handleContinue} disabled={loading} style={{
-            width: "100%",
-            padding: "16px",
-            marginTop: "24px",
-            borderRadius: "14px",
-            border: "none",
-            background: "linear-gradient(135deg, var(--primary), var(--accent))",
-            color: "#fff",
-            fontSize: "16px",
-            fontWeight: "700",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.8 : 1
-          }}>{loading ? "Saving survey..." : step === 4 ? "Save and Continue" : "Continue"}</button>
+          {error && <p style={{ color: T.danger, fontSize: "13px", margin: "16px 0 0", fontWeight: 600 }}>{error}</p>}
+
+          <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+            {step > 1 && (
+              <button onClick={() => { setError(""); setStep(s => s - 1); }} disabled={loading} style={{
+                padding: "15px 20px",
+                borderRadius: "14px",
+                border: `1.5px solid ${T.border}`,
+                background: "#fff",
+                color: T.text,
+                fontSize: "15px",
+                fontWeight: "700",
+                cursor: "pointer",
+                fontFamily: "system-ui"
+              }}>← Back</button>
+            )}
+            <button onClick={handleContinue} disabled={loading} style={{
+              flex: 1,
+              padding: "15px",
+              borderRadius: "14px",
+              border: "none",
+              background: `linear-gradient(135deg, ${T.primary}, ${T.primarySoft})`,
+              color: "#fff",
+              fontSize: "16px",
+              fontWeight: "800",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.8 : 1,
+              fontFamily: "system-ui"
+            }}>{loading ? "Saving…" : step === 4 ? "Finish & Continue" : "Continue →"}</button>
+          </div>
         </GlassCard>
       </div>
     </div>
