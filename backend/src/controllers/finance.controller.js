@@ -278,7 +278,7 @@ export const fundGoal = asyncHandler(async (req, res) => {
   workspace.goals = workspace.goals.map(goal =>
     goal.id === req.params.id
       ? {
-          ...goal.toObject(),
+          ...goal,
           current: Math.min(goal.target, Number(goal.current || 0) + fundAmount)
         }
       : goal
@@ -308,7 +308,7 @@ export const createBill = asyncHandler(async (req, res) => {
 export const payBill = asyncHandler(async (req, res) => {
   const workspace = req.workspace;
   workspace.bills = workspace.bills.map(bill =>
-    bill.id === req.params.id ? { ...bill.toObject(), status: "paid" } : bill
+    bill.id === req.params.id ? { ...bill, status: "paid" } : bill
   );
   await workspace.save();
 
@@ -394,7 +394,7 @@ export const deleteAccount = asyncHandler(async (req, res) => {
 
   workspace.accounts = workspace.accounts.filter(account => account.id !== req.params.id);
   workspace.transactions = workspace.transactions.map(transaction => ({
-    ...transaction.toObject(),
+    ...transaction,
     accountId: transaction.accountId === req.params.id ? "deleted" : transaction.accountId,
     fromId: transaction.fromId === req.params.id ? "deleted" : transaction.fromId,
     toId: transaction.toId === req.params.id ? "deleted" : transaction.toId

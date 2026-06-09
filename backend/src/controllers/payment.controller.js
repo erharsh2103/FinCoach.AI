@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { PLAN_PRICING } from "../constants/plans.js";
 import { getRazorpayClient } from "../config/razorpay.js";
-import { Payment } from "../models/payment.model.js";
+import { supabase } from "../config/db.js";
 import { HttpError } from "../utils/httpError.js";
 import env from "../config/env.js";
 
@@ -18,7 +18,7 @@ export const createPaymentOrder = asyncHandler(async (req, res) => {
   const razorpay = getRazorpayClient();
   const receipt = `fincoach_${plan}_${Date.now()}`;
   const notes = {
-    workspaceId: String(workspace._id),
+    workspaceId: String(workspace.id),
     phone: workspace.phone,
     planId: plan
   };
@@ -30,8 +30,8 @@ export const createPaymentOrder = asyncHandler(async (req, res) => {
     notes
   });
 
-  await Payment.create({
-    workspaceId: workspace._id,
+  const { error } = await supabase.from("payments").insert({
+    userId: workspace.id,
     planId: plan,
     amount: order.amount,
     currency: order.currency,
@@ -40,6 +40,7 @@ export const createPaymentOrder = asyncHandler(async (req, res) => {
     status: order.status,
     notes
   });
+  if (error) throw new HttpError(500, `Could not record payment order: ${error.message}`);
 
   res.status(201).json({
     key: env.razorpayKeyId,
@@ -62,12 +63,14 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     throw new HttpError(400, "Invalid paid plan.");
   }
 
-  const payment = await Payment.findOne({
-    workspaceId: workspace._id,
-    planId: plan,
-    razorpayOrderId: razorpayOrderId
-  });
-
+  const { data: payment, error: findError } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("userId", workspace.id)
+    .eq("planId", plan)
+    .eq("razorpayOrderId", razorpayOrderId)
+    .maybeSingle();
+  if (findError) throw new HttpError(500, findError.message);
   if (!payment) {
     throw new HttpError(404, "Payment order not found.");
   }
@@ -78,17 +81,28 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     .digest("hex");
 
   if (generatedSignature !== razorpaySignature) {
-    payment.status = "failed";
-    payment.razorpayPaymentId = razorpayPaymentId || "";
-    payment.razorpaySignature = razorpaySignature || "";
-    await payment.save();
+    await supabase
+      .from("payments")
+      .update({
+        status: "failed",
+        razorpayPaymentId: razorpayPaymentId || "",
+        razorpaySignature: razorpaySignature || ""
+      })
+      .eq("id", payment.id);
     throw new HttpError(400, "Payment signature verification failed.");
   }
 
-  payment.status = "verified";
-  payment.razorpayPaymentId = razorpayPaymentId;
-  payment.razorpaySignature = razorpaySignature;
-  await payment.save();
+  const { data: updatedPayment, error: updateError } = await supabase
+    .from("payments")
+    .update({
+      status: "verified",
+      razorpayPaymentId,
+      razorpaySignature
+    })
+    .eq("id", payment.id)
+    .select("*")
+    .single();
+  if (updateError) throw new HttpError(500, updateError.message);
 
   workspace.plan = plan;
   await workspace.save();
@@ -97,19 +111,22 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     verified: true,
     plan: workspace.plan,
     payment: {
-      id: payment._id,
-      razorpayOrderId: payment.razorpayOrderId,
-      razorpayPaymentId: payment.razorpayPaymentId,
-      status: payment.status
+      id: updatedPayment.id,
+      razorpayOrderId: updatedPayment.razorpayOrderId,
+      razorpayPaymentId: updatedPayment.razorpayPaymentId,
+      status: updatedPayment.status
     }
   });
 });
 
 export const getPaymentHistory = asyncHandler(async (req, res) => {
   const workspace = req.workspace;
-  const payments = await Payment.find({ workspaceId: workspace._id })
-    .sort({ createdAt: -1 })
-    .lean();
+  const { data: payments, error } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("userId", workspace.id)
+    .order("created_at", { ascending: false });
+  if (error) throw new HttpError(500, error.message);
 
-  res.status(200).json({ payments });
+  res.status(200).json({ payments: payments || [] });
 });

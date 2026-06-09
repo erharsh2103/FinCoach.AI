@@ -1,0 +1,53 @@
+# Render Blueprint — FinCoach.AI (Express API + Vite static frontend)
+# Docs: https://render.com/docs/blueprint-spec
+#
+# MongoDB is NOT hosted on Render. Create a free MongoDB Atlas cluster, allow
+# network access from 0.0.0.0/0, and paste its connection string into the
+# MONGODB_URI env var in the Render dashboard (it's marked sync:false below).
+
+services:
+  # ── Backend: Express API ───────────────────────────────────────────────
+  - type: web
+    name: fincoach-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL           # https://<project>.supabase.co — set in dashboard
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY   # service_role key — set in dashboard
+        sync: false
+      - key: CLIENT_URL             # the frontend URL, e.g. https://fincoach-frontend.onrender.com
+        sync: false
+      - key: ANTHROPIC_API_KEY      # optional — enables real AI Coach
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-4-5
+      - key: RAZORPAY_KEY_ID        # optional — only if using payments
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+
+  # ── Frontend: Vite static site ─────────────────────────────────────────
+  - type: web
+    name: fincoach-frontend
+    runtime: static
+    rootDir: .
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    envVars:
+      - key: VITE_API_BASE_URL      # the backend URL, e.g. https://fincoach-backend.onrender.com
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

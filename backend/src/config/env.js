@@ -19,7 +19,8 @@ const env = {
   port: Number(process.env.PORT || 4000),
   nodeEnv: process.env.NODE_ENV || "development",
   clientUrl: process.env.CLIENT_URL || "http://127.0.0.1:5173",
-  mongoUri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fincoach",
+  supabaseUrl: process.env.SUPABASE_URL || "",
+  supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   smsProvider: process.env.SMS_PROVIDER || "",
   razorpayKeyId: process.env.RAZORPAY_KEY_ID || "",
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || "",
@@ -28,11 +29,11 @@ const env = {
   anthropicModel: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5"
 };
 
-if (env.nodeEnv === "production" && !process.env.MONGODB_URI) {
-  throw new Error("Missing required environment variable: MONGODB_URI");
+if (env.nodeEnv === "production" && (!env.supabaseUrl || !env.supabaseServiceKey)) {
+  throw new Error("Missing required environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
 }
 
 console.log(`📦 Environment: ${env.nodeEnv}`);
-console.log(`🔗 MongoDB: ${env.mongoUri.split("@")[1] || "local"}`);
+console.log(`🔗 Supabase: ${env.supabaseUrl ? env.supabaseUrl.replace(/^https?:\/\//, "") : "not configured"}`);
 
 export default env;
