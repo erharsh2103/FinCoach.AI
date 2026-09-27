@@ -1,6 +1,21 @@
-# FINCOACH - Financial Coaching Application
+# FinCoach — Financial Coaching Application
+
+![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)
+![Node](https://img.shields.io/badge/node-20.x-brightgreen.svg)
 
 A modern React + Vite frontend with Node.js backend for financial coaching and management, powered by AI.
+
+## Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Setup Instructions](#setup-instructions)
+- [API Documentation](#api-documentation)
+- [Authentication Flow](#authentication-flow)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -302,59 +317,12 @@ Development mode shows OTP in backend logs. To use real SMS:
 
 ## Contributing
 
-1. Create a feature branch
-2. Make your changes
-3. Test both frontend and backend
-4. Submit a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-Private - FinCoach Application
+Private — see [LICENSE](LICENSE). All rights reserved.
 
 ## Support
 
 For issues or questions, check the troubleshooting section or review API documentation above.
-
-   ```
-
-2. Run the development server:
-   ```bash
-   npm run server
-   ```
-
-3. In a second terminal, run the frontend:
-   ```bash
-   npm run dev
-   ```
-
-4. Open [http://localhost:5173/index.html](http://localhost:5173/index.html) in your browser.
-
-## Project Structure
-
-- `index.html` - App entry HTML
-- `src/main.jsx` - React entry point
-- `src/App.jsx` - Main app component with all pages
-- `src/FinCoachAI.jsx` - Placeholder for AI features
-- `src/styles.css` - Global styles
-- `server.mjs` - Backend API for accounts, transfers, reports data, and phone validation
-- `data/fincoach-db.json` - Local JSON database used by the backend
-- `vite.config.js` - Vite configuration
-- `package.json` - Dependencies and scripts
-
-## Pages
-
-- **Login**: Phone authentication
-- **Onboarding**: User setup
-- **Dashboard**: Financial overview
-- **Accounts**: Account management
-- **AI Coach**: AI-powered advice (placeholder)
-- **Goals**: Financial goals tracking
-- **Calculator**: Financial calculations
-- **Community**: User community
-- **Videos**: Educational content
-- **Testimonials**: User reviews
-
-## Development
-
-- Use `npm run build` to build for production
-- Use `npm run preview` to preview the production build
